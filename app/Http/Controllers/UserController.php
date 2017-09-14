@@ -12,19 +12,19 @@ class UserController extends Controller
      *
      * @return \Illuminate\Http\Response
      */
-    public function index()
+    public function index(Request $request)
     {
-        //
-    }
-
-    /**
-     * Show the form for creating a new resource.
-     *
-     * @return \Illuminate\Http\Response
-     */
-    public function create()
-    {
-        //
+        $parameters = $request->all();
+        if ( isset($parameters['query']) && $parameters['query'] != '' ) {
+            $query = $parameters['query'];
+            $users = User::where('email', 'like', '%'.$query.'%')
+                ->orWhere('full_name', 'like', '%'.$query.'%')
+                ->orWhere('metadata', 'like', '%'.$query.'%')
+                ->get();
+        } else {
+            $users = User::all();
+        }
+        return response()->json($users->toArray());
     }
 
     /**
@@ -35,65 +35,39 @@ class UserController extends Controller
      */
     public function store(Request $request)
     {
-        $user = new User();
         $response = [];
-        $input = $user->trimData($request->all());
-        if(!$user->isValid($input)) {
-            $response['errors'] = $user->errors;
-        } else {
-            $input['key'] = bin2hex(openssl_random_pseudo_bytes(32));
-            $input['password'] = \Hash::make($input['password'].User::$SALT);
-            $user->insert($input);
-            unset($input['key'], $input['password']);
-            $response = $input;
-            //TODO: set a cronjob to request external service over users with account_key NULL
+        try {
+            $user = new User();
+            $input = $user->trimData($request->all());
+            if(!$user->isValid($input)) {
+                $code = 422;
+                $response['errors'] = $user->errors;
+            } else {
+                $code = 201;
+                $input['key'] = bin2hex(openssl_random_pseudo_bytes(32));
+                $input['password'] = \Hash::make($input['password'].User::$SALT);
 
+                $result = $user->curlExternalService($input['email'], $input['key']);
+                if ($result['success'] && $result['data']['email'] == $input['email']) {
+                    $input['account_key'] = $result['data']['account_key'];
+                    \Log::info("user updated: ".$input['email']);
+                }
+
+                $userId = $user->insertGetId($input);
+                $user = User::find($userId);
+
+                $response = $user->toArray();
+            }
+        } catch (\Exception $e) {
+            $code = 500;
+            $response['errors'] = $e->getMessage();
         }
-        return response()->json($response);
+
+        return response()->json($response, $code);
     }
 
-    /**
-     * Display the specified resource.
-     *
-     * @param  int  $id
-     * @return \Illuminate\Http\Response
-     */
-    public function show($id)
+    public function updateAccountKeys()
     {
-        //
-    }
-
-    /**
-     * Show the form for editing the specified resource.
-     *
-     * @param  int  $id
-     * @return \Illuminate\Http\Response
-     */
-    public function edit($id)
-    {
-        //
-    }
-
-    /**
-     * Update the specified resource in storage.
-     *
-     * @param  \Illuminate\Http\Request  $request
-     * @param  int  $id
-     * @return \Illuminate\Http\Response
-     */
-    public function update(Request $request, $id)
-    {
-        //
-    }
-
-    /**
-     * Remove the specified resource from storage.
-     *
-     * @param  int  $id
-     * @return \Illuminate\Http\Response
-     */
-    public function destroy($id)
-    {
-        //
+        User::updateAccountKeys();
     }
 }

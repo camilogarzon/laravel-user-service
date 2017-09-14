@@ -16,4 +16,4 @@ Route::get('/', function () {
 });
 
 Route::get('v1/users', 'UserController@index');
-Route::get('v1/users-post', 'UserController@store');
+Route::post('v1/users', 'UserController@store');
