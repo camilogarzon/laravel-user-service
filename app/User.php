@@ -25,7 +25,7 @@ class User extends Authenticatable
     public $apiFields = [ 'email', 'phone_number', 'full_name', 'password', 'metadata' ];
 
     /**
-     * The attributes that should be hidden for arrays.
+     * The attributes that should be hidden for arrays, like primary key ID and Password
      *
      * @var array
      */
@@ -59,6 +59,8 @@ class User extends Authenticatable
     public $errors = [];
 
     /**
+     * Remove attributes not accepted in API
+     *
      * @param $data
      * @return array
      */
@@ -145,15 +147,6 @@ class User extends Authenticatable
         } else {
             \Log::error($info);
         }
-
-//        echo '<pre>';
-////        print_r($response);
-////        echo '****'.PHP_EOL;
-////        print_r($info);
-////        echo '****'.PHP_EOL;
-////        print_r($error);
-//        print_r($return);
-//        die;
 
         return $return;
     }

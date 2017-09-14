@@ -10,6 +10,7 @@ class UserController extends Controller
     /**
      * Display a listing of the resource.
      *
+     * @param  \Illuminate\Http\Request  $request
      * @return \Illuminate\Http\Response
      */
     public function index(Request $request)
@@ -45,6 +46,7 @@ class UserController extends Controller
             } else {
                 $code = 201;
                 $input['key'] = bin2hex(openssl_random_pseudo_bytes(32));
+                // The password should be stored hashed with a salt value
                 $input['password'] = \Hash::make($input['password'].User::$SALT);
 
                 $result = $user->curlExternalService($input['email'], $input['key']);
@@ -64,10 +66,5 @@ class UserController extends Controller
         }
 
         return response()->json($response, $code);
-    }
-
-    public function updateAccountKeys()
-    {
-        User::updateAccountKeys();
     }
 }
